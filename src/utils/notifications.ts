@@ -12,6 +12,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
+const DAILY_REMINDER_ID = "daily-reminder";
+
 export async function registerForPushNotifications(): Promise<void> {
   if (!Device.isDevice) {
     return; // 시뮬레이터에서는 동작하지 않음
@@ -40,10 +42,11 @@ export async function registerForPushNotifications(): Promise<void> {
 }
 
 export async function scheduleDailyReminder(): Promise<void> {
-  // 기존 예약된 알림 취소
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // 기존 일일 알림만 취소 (다른 알림은 유지)
+  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
 
   await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_REMINDER_ID,
     content: {
       title: "성과 기록 시간",
       body: "오늘 성과 기록할 시간이에요! 📝",

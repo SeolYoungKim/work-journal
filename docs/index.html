@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:;">
 <meta name="theme-color" content="#F8F9FA">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -375,26 +376,26 @@ body {
 <!-- Tab Content -->
 <div class="tab-content">
   <!-- Home Panel -->
-  <div class="tab-panel active" id="panelHome">
+  <div class="tab-panel active" id="panelHome" role="tabpanel">
     <div class="date-header" id="dateHeader"></div>
     <div class="greeting">오늘의 성과를 기록하세요</div>
 
     <div class="card">
-      <div class="label">오늘 한 일</div>
-      <textarea class="textarea" id="inputTask" placeholder="어떤 일을 했나요?"></textarea>
+      <label class="label" for="inputTask">오늘 한 일</label>
+      <textarea class="textarea" id="inputTask" placeholder="어떤 일을 했나요?" maxlength="2000"></textarea>
 
-      <div class="label">수치</div>
-      <input class="input" id="inputMetric" placeholder="예: 에러 로그 40% 감소">
+      <label class="label" for="inputMetric">수치</label>
+      <input class="input" id="inputMetric" placeholder="예: 에러 로그 40% 감소" maxlength="500">
 
-      <div class="label">임팩트</div>
-      <input class="input" id="inputImpact" placeholder="왜 중요한지 한 줄로">
+      <label class="label" for="inputImpact">임팩트</label>
+      <input class="input" id="inputImpact" placeholder="왜 중요한지 한 줄로" maxlength="500">
     </div>
 
     <button class="btn-save" id="btnSave">저장하기</button>
   </div>
 
   <!-- Records Panel -->
-  <div class="tab-panel" id="panelRecords">
+  <div class="tab-panel" id="panelRecords" role="tabpanel">
     <div class="export-bar" id="exportBar" style="display:none">
       <button class="btn-export" id="btnExportTxt">
         <span class="export-icon">📄</span> TXT 내보내기
@@ -408,12 +409,12 @@ body {
 </div>
 
 <!-- Tab Bar -->
-<nav class="tab-bar">
-  <button class="tab-item active" data-tab="panelHome">
+<nav class="tab-bar" role="tablist">
+  <button class="tab-item active" role="tab" aria-selected="true" aria-controls="panelHome" data-tab="panelHome">
     <span class="tab-icon">✏️</span>
     <span class="tab-label">기록하기</span>
   </button>
-  <button class="tab-item" data-tab="panelRecords">
+  <button class="tab-item" role="tab" aria-selected="false" aria-controls="panelRecords" data-tab="panelRecords">
     <span class="tab-icon">📋</span>
     <span class="tab-label">기록 목록</span>
   </button>
@@ -512,7 +513,10 @@ body {
   });
 
   // ── Save ──
+  let isSaving = false;
   btnSave.addEventListener('click', () => {
+    if (isSaving) return;
+
     const task = inputTask.value.trim();
     if (!task) {
       showToast("'오늘 한 일'을 입력해주세요");
@@ -520,25 +524,37 @@ body {
       return;
     }
 
-    const now = new Date();
-    const entry = {
-      id: Date.now().toString(),
-      date: formatDate(now),
-      task: task,
-      metric: inputMetric.value.trim(),
-      impact: inputImpact.value.trim(),
-      createdAt: now.toISOString(),
-    };
+    isSaving = true;
+    btnSave.disabled = true;
+    btnSave.textContent = '저장 중...';
 
-    const list = load();
-    list.unshift(entry);
-    save(list);
+    try {
+      const now = new Date();
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        date: formatDate(now),
+        task: task,
+        metric: inputMetric.value.trim(),
+        impact: inputImpact.value.trim(),
+        createdAt: now.toISOString(),
+      };
 
-    inputTask.value = '';
-    inputMetric.value = '';
-    inputImpact.value = '';
+      const list = load();
+      list.unshift(entry);
+      save(list);
 
-    showToast('저장되었습니다!');
+      inputTask.value = '';
+      inputMetric.value = '';
+      inputImpact.value = '';
+
+      showToast('저장되었습니다!');
+    } catch {
+      showToast('저장 중 오류가 발생했습니다');
+    } finally {
+      isSaving = false;
+      btnSave.disabled = false;
+      btnSave.textContent = '저장하기';
+    }
   });
 
   // ── Render Records ──
@@ -575,7 +591,7 @@ body {
         const metricEsc = escapeHtml(item.metric);
         const impactEsc = escapeHtml(item.impact);
         html += `<div class="record-card">`;
-        html += `<button class="btn-delete" data-id="${item.id}" title="삭제">✕</button>`;
+        html += `<button class="btn-delete" data-id="${escapeHtml(item.id)}" title="삭제">✕</button>`;
         html += `<div class="record-task">${taskEsc}</div>`;
         if (item.metric) {
           html += `<div class="record-meta metric"><span>📊</span> ${metricEsc}</div>`;
@@ -589,17 +605,18 @@ body {
     }
 
     recordsList.innerHTML = html;
-
-    // Attach delete handlers
-    recordsList.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.addEventListener('click', () => showConfirm(btn.dataset.id));
-    });
   }
+
+  // Event delegation: 삭제 버튼 클릭 처리 (한 번만 등록)
+  recordsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete');
+    if (btn) showConfirm(btn.dataset.id);
+  });
 
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+              .replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '<br>');
   }
 
   // ── Export ──
@@ -640,8 +657,12 @@ body {
   function buildCsv(list) {
     const header = '날짜,오늘 한 일,수치,임팩트';
     const rows = list.map(a => {
-      const esc = (s) => '"' + (s || '').replace(/"/g, '""') + '"';
-      return [a.date, esc(a.task), esc(a.metric), esc(a.impact)].join(',');
+      const esc = (s) => {
+        let val = (s || '').replace(/"/g, '""');
+        if (/^[=+\-@\t\r]/.test(val)) val = "'" + val;
+        return '"' + val + '"';
+      };
+      return [esc(a.date), esc(a.task), esc(a.metric), esc(a.impact)].join(',');
     });
     return '\uFEFF' + header + '\n' + rows.join('\n');
   }
@@ -663,9 +684,13 @@ body {
   // ── Tab Switching ──
   $$('.tab-item').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('.tab-item').forEach(b => b.classList.remove('active'));
+      $$('.tab-item').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
       $$('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       $('#' + btn.dataset.tab).classList.add('active');
 
       if (btn.dataset.tab === 'panelRecords') {
