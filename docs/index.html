@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F8F9FA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>일일 성과 기록</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #F8F9FA;
+  --card: #FFFFFF;
+  --primary: #4A6CF7;
+  --primary-shadow: rgba(74, 108, 247, 0.3);
+  --text: #1A1A2E;
+  --text-secondary: #666;
+  --text-muted: #888;
+  --input-bg: #F4F5F7;
+  --border: #E8E8E8;
+  --danger: #EF4444;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── Tab Content ── */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 20px calc(68px + var(--safe-bottom));
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Header ── */
+.date-header {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.greeting {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  margin-top: 12px;
+}
+
+.label:first-child { margin-top: 0; }
+
+.input, .textarea {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.input:focus, .textarea:focus {
+  border-color: var(--primary);
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.input::placeholder, .textarea::placeholder {
+  color: #aaa;
+}
+
+/* ── Button ── */
+.btn-save {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--primary);
+  color: #FFF;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px var(--primary-shadow);
+  transition: opacity 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+
+.btn-save:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Records List ── */
+.section-header {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.section { margin-bottom: 20px; }
+
+.record-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  position: relative;
+}
+
+.record-task {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  padding-right: 28px;
+}
+
+.record-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.record-meta.metric { color: var(--primary); font-weight: 600; }
+.record-meta.impact { color: var(--text-secondary); }
+
+.btn-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #ccc;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.btn-delete:hover { color: var(--danger); }
+
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  text-align: center;
+}
+
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.empty-text { font-size: 14px; color: var(--text-muted); }
+
+/* ── Bottom Tab Bar ── */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  background: var(--card);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+  padding: 8px 0 calc(8px + var(--safe-bottom));
+  z-index: 100;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.2s;
+  color: #999;
+}
+
+.tab-item.active { color: var(--primary); }
+.tab-icon { font-size: 20px; line-height: 1; }
+.tab-label { font-size: 12px; font-weight: 600; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 200;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ── Confirm Dialog ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay.show { display: flex; }
+
+.dialog {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px;
+  width: 280px;
+  text-align: center;
+}
+
+.dialog-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.dialog-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dialog-btn.cancel {
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.dialog-btn.danger {
+  background: var(--danger);
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm Dialog -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <div class="dialog-title">삭제</div>
+    <div class="dialog-message">이 기록을 삭제하시겠습니까?</div>
+    <div class="dialog-actions">
+      <button class="dialog-btn cancel" id="dialogCancel">취소</button>
+      <button class="dialog-btn danger" id="dialogConfirm">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Content -->
+<div class="tab-content">
+  <!-- Home Panel -->
+  <div class="tab-panel active" id="panelHome">
+    <div class="date-header" id="dateHeader"></div>
+    <div class="greeting">오늘의 성과를 기록하세요</div>
+
+    <div class="card">
+      <div class="label">오늘 한 일</div>
+      <textarea class="textarea" id="inputTask" placeholder="어떤 일을 했나요?"></textarea>
+
+      <div class="label">수치</div>
+      <input class="input" id="inputMetric" placeholder="예: 에러 로그 40% 감소">
+
+      <div class="label">임팩트</div>
+      <input class="input" id="inputImpact" placeholder="왜 중요한지 한 줄로">
+    </div>
+
+    <button class="btn-save" id="btnSave">저장하기</button>
+  </div>
+
+  <!-- Records Panel -->
+  <div class="tab-panel" id="panelRecords">
+    <div id="recordsList"></div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<nav class="tab-bar">
+  <button class="tab-item active" data-tab="panelHome">
+    <span class="tab-icon">✏️</span>
+    <span class="tab-label">기록하기</span>
+  </button>
+  <button class="tab-item" data-tab="panelRecords">
+    <span class="tab-icon">📋</span>
+    <span class="tab-label">기록 목록</span>
+  </button>
+</nav>
+
+<script>
+(function () {
+  // ── Storage ──
+  const STORAGE_KEY = 'work_journal_achievements';
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function save(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  // ── Date Helpers ──
+  const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+  function formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function displayDate(d) {
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
+  }
+
+  function sectionDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return `${m}월 ${d}일 (${DAYS[dt.getDay()]})`;
+  }
+
+  // ── DOM ──
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  const dateHeader = $('#dateHeader');
+  const inputTask = $('#inputTask');
+  const inputMetric = $('#inputMetric');
+  const inputImpact = $('#inputImpact');
+  const btnSave = $('#btnSave');
+  const recordsList = $('#recordsList');
+  const toast = $('#toast');
+  const overlay = $('#overlay');
+  const dialogCancel = $('#dialogCancel');
+  const dialogConfirm = $('#dialogConfirm');
+
+  // ── Init Date ──
+  dateHeader.textContent = displayDate(new Date());
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg) {
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // ── Confirm Dialog ──
+  let pendingDeleteId = null;
+
+  function showConfirm(id) {
+    pendingDeleteId = id;
+    overlay.classList.add('show');
+  }
+
+  dialogCancel.addEventListener('click', () => {
+    overlay.classList.remove('show');
+    pendingDeleteId = null;
+  });
+
+  dialogConfirm.addEventListener('click', () => {
+    if (pendingDeleteId !== null) {
+      const list = load().filter(a => a.id !== pendingDeleteId);
+      save(list);
+      renderRecords();
+      showToast('삭제되었습니다');
+    }
+    overlay.classList.remove('show');
+    pendingDeleteId = null;
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('show');
+      pendingDeleteId = null;
+    }
+  });
+
+  // ── Save ──
+  btnSave.addEventListener('click', () => {
+    const task = inputTask.value.trim();
+    if (!task) {
+      showToast("'오늘 한 일'을 입력해주세요");
+      inputTask.focus();
+      return;
+    }
+
+    const now = new Date();
+    const entry = {
+      id: Date.now().toString(),
+      date: formatDate(now),
+      task: task,
+      metric: inputMetric.value.trim(),
+      impact: inputImpact.value.trim(),
+      createdAt: now.toISOString(),
+    };
+
+    const list = load();
+    list.unshift(entry);
+    save(list);
+
+    inputTask.value = '';
+    inputMetric.value = '';
+    inputImpact.value = '';
+
+    showToast('저장되었습니다!');
+  });
+
+  // ── Render Records ──
+  function renderRecords() {
+    const list = load();
+    if (list.length === 0) {
+      recordsList.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-icon">📝</div>' +
+          '<div class="empty-title">기록이 없습니다</div>' +
+          '<div class="empty-text">오늘의 성과를 기록해보세요!</div>' +
+        '</div>';
+      return;
+    }
+
+    // Group by date
+    const map = new Map();
+    for (const a of list) {
+      if (!map.has(a.date)) map.set(a.date, []);
+      map.get(a.date).push(a);
+    }
+
+    const dates = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+
+    let html = '';
+    for (const date of dates) {
+      html += '<div class="section">';
+      html += `<div class="section-header">${sectionDate(date)}</div>`;
+      for (const item of map.get(date)) {
+        const taskEsc = escapeHtml(item.task);
+        const metricEsc = escapeHtml(item.metric);
+        const impactEsc = escapeHtml(item.impact);
+        html += `<div class="record-card">`;
+        html += `<button class="btn-delete" data-id="${item.id}" title="삭제">✕</button>`;
+        html += `<div class="record-task">${taskEsc}</div>`;
+        if (item.metric) {
+          html += `<div class="record-meta metric"><span>📊</span> ${metricEsc}</div>`;
+        }
+        if (item.impact) {
+          html += `<div class="record-meta impact"><span>💡</span> ${impactEsc}</div>`;
+        }
+        html += `</div>`;
+      }
+      html += '</div>';
+    }
+
+    recordsList.innerHTML = html;
+
+    // Attach delete handlers
+    recordsList.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', () => showConfirm(btn.dataset.id));
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+  }
+
+  // ── Tab Switching ──
+  $$('.tab-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.tab-item').forEach(b => b.classList.remove('active'));
+      $$('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      $('#' + btn.dataset.tab).classList.add('active');
+
+      if (btn.dataset.tab === 'panelRecords') {
+        renderRecords();
+      }
+    });
+  });
+
+  // ── Initial render ──
+  renderRecords();
+})();
+</script>
+</body>
+</html>
