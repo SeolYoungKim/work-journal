@@ -21,8 +21,12 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 export default function App() {
   useEffect(() => {
     (async () => {
-      await registerForPushNotifications();
-      await scheduleDailyReminder();
+      try {
+        await registerForPushNotifications();
+        await scheduleDailyReminder();
+      } catch (e) {
+        console.warn("알림 초기화 실패:", e);
+      }
     })();
   }, []);
 

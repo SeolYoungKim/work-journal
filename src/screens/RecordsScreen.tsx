@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -14,14 +14,14 @@ import { Achievement } from "../types";
 function formatSectionDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
   const date = new Date(Number(y), Number(m) - 1, Number(d));
+  if (isNaN(date.getTime())) return dateStr;
   const days = ["일", "월", "화", "수", "목", "금", "토"];
   return `${Number(m)}월 ${Number(d)}일 (${days[date.getDay()]})`;
 }
 
 interface Section {
-  date: string;
-  displayDate: string;
-  items: Achievement[];
+  title: string;
+  data: Achievement[];
 }
 
 function groupByDate(achievements: Achievement[]): Section[] {
@@ -31,12 +31,11 @@ function groupByDate(achievements: Achievement[]): Section[] {
     list.push(a);
     map.set(a.date, list);
   }
-  const sections: Section[] = [];
-  for (const [date, items] of map) {
-    sections.push({ date, displayDate: formatSectionDate(date), items });
-  }
-  sections.sort((a, b) => b.date.localeCompare(a.date));
-  return sections;
+  const dates = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+  return dates.map((date) => ({
+    title: formatSectionDate(date),
+    data: map.get(date)!,
+  }));
 }
 
 export default function RecordsScreen() {
@@ -45,9 +44,15 @@ export default function RecordsScreen() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const data = await getAchievements();
-    setSections(groupByDate(data));
-    setLoading(false);
+    try {
+      const data = await getAchievements();
+      setSections(groupByDate(data));
+    } catch {
+      setSections([]);
+      Alert.alert("오류", "데이터를 불러올 수 없습니다.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -56,49 +61,57 @@ export default function RecordsScreen() {
     }, [loadData])
   );
 
-  const handleDelete = (item: Achievement) => {
-    Alert.alert("삭제", "이 기록을 삭제하시겠습니까?", [
-      { text: "취소", style: "cancel" },
-      {
-        text: "삭제",
-        style: "destructive",
-        onPress: async () => {
-          await deleteAchievement(item.id);
-          loadData();
+  const handleDelete = useCallback(
+    (item: Achievement) => {
+      Alert.alert("삭제", "이 기록을 삭제하시겠습니까?", [
+        { text: "취소", style: "cancel" },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAchievement(item.id);
+              loadData();
+            } catch {
+              Alert.alert("오류", "삭제 중 문제가 발생했습니다.");
+            }
+          },
         },
-      },
-    ]);
-  };
-
-  const renderItem = ({ item }: { item: Achievement }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onLongPress={() => handleDelete(item)}
-      activeOpacity={0.9}
-    >
-      <Text style={styles.taskText}>{item.task}</Text>
-      {item.metric ? (
-        <View style={styles.metricRow}>
-          <Text style={styles.metricIcon}>📊</Text>
-          <Text style={styles.metricText}>{item.metric}</Text>
-        </View>
-      ) : null}
-      {item.impact ? (
-        <View style={styles.impactRow}>
-          <Text style={styles.impactIcon}>💡</Text>
-          <Text style={styles.impactText}>{item.impact}</Text>
-        </View>
-      ) : null}
-    </TouchableOpacity>
+      ]);
+    },
+    [loadData]
   );
 
-  const renderSection = ({ item: section }: { item: Section }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionHeader}>{section.displayDate}</Text>
-      {section.items.map((item) => (
-        <View key={item.id}>{renderItem({ item })}</View>
-      ))}
-    </View>
+  const renderItem = useCallback(
+    ({ item }: { item: Achievement }) => (
+      <TouchableOpacity
+        style={styles.card}
+        onLongPress={() => handleDelete(item)}
+        activeOpacity={0.9}
+      >
+        <Text style={styles.taskText}>{item.task}</Text>
+        {item.metric ? (
+          <View style={styles.metricRow}>
+            <Text style={styles.metricIcon}>📊</Text>
+            <Text style={styles.metricText}>{item.metric}</Text>
+          </View>
+        ) : null}
+        {item.impact ? (
+          <View style={styles.impactRow}>
+            <Text style={styles.impactIcon}>💡</Text>
+            <Text style={styles.impactText}>{item.impact}</Text>
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    ),
+    [handleDelete]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: Section }) => (
+      <Text style={styles.sectionHeader}>{section.title}</Text>
+    ),
+    []
   );
 
   if (loading) {
@@ -123,12 +136,14 @@ export default function RecordsScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={sections}
-        keyExtractor={(item) => item.date}
-        renderItem={renderSection}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
       />
     </View>
   );
@@ -143,14 +158,12 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 12,
   },
-  section: {
-    marginBottom: 20,
-  },
   sectionHeader: {
     fontSize: 16,
     fontWeight: "700",
     color: "#1A1A2E",
     marginBottom: 10,
+    marginTop: 12,
   },
   card: {
     backgroundColor: "#FFFFFF",

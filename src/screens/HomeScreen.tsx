@@ -44,13 +44,14 @@ export default function HomeScreen() {
 
     setSaving(true);
     try {
+      const now = new Date();
       const achievement: Achievement = {
-        id: Date.now().toString(),
-        date: formatDate(today),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        date: formatDate(now),
         task: task.trim(),
         metric: metric.trim(),
         impact: impact.trim(),
-        createdAt: today.toISOString(),
+        createdAt: now.toISOString(),
       };
       await saveAchievement(achievement);
       setTask("");
