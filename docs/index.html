@@ -320,6 +320,39 @@ body {
   background: var(--danger);
   color: #fff;
 }
+
+/* ── Export Bar ── */
+.export-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.btn-export {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.btn-export:active {
+  background: var(--input-bg);
+}
+
+.btn-export .export-icon {
+  font-size: 15px;
+}
 </style>
 </head>
 <body>
@@ -362,6 +395,14 @@ body {
 
   <!-- Records Panel -->
   <div class="tab-panel" id="panelRecords">
+    <div class="export-bar" id="exportBar" style="display:none">
+      <button class="btn-export" id="btnExportTxt">
+        <span class="export-icon">📄</span> TXT 내보내기
+      </button>
+      <button class="btn-export" id="btnExportCsv">
+        <span class="export-icon">📊</span> CSV 내보내기
+      </button>
+    </div>
     <div id="recordsList"></div>
   </div>
 </div>
@@ -504,6 +545,7 @@ body {
   function renderRecords() {
     const list = load();
     if (list.length === 0) {
+      exportBar.style.display = 'none';
       recordsList.innerHTML =
         '<div class="empty-state">' +
           '<div class="empty-icon">📝</div>' +
@@ -512,6 +554,8 @@ body {
         '</div>';
       return;
     }
+
+    exportBar.style.display = 'flex';
 
     // Group by date
     const map = new Map();
@@ -557,6 +601,64 @@ body {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
   }
+
+  // ── Export ──
+  const exportBar = $('#exportBar');
+  const btnExportTxt = $('#btnExportTxt');
+  const btnExportCsv = $('#btnExportCsv');
+
+  function downloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function buildTxt(list) {
+    const map = new Map();
+    for (const a of list) {
+      if (!map.has(a.date)) map.set(a.date, []);
+      map.get(a.date).push(a);
+    }
+    const dates = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+    let txt = '';
+    for (const date of dates) {
+      txt += '=== ' + sectionDate(date) + ' (' + date + ') ===\n\n';
+      for (const item of map.get(date)) {
+        txt += '[ 오늘 한 일 ] ' + item.task + '\n';
+        if (item.metric) txt += '[ 수치 ] ' + item.metric + '\n';
+        if (item.impact) txt += '[ 임팩트 ] ' + item.impact + '\n';
+        txt += '\n';
+      }
+    }
+    return txt.trim();
+  }
+
+  function buildCsv(list) {
+    const header = '날짜,오늘 한 일,수치,임팩트';
+    const rows = list.map(a => {
+      const esc = (s) => '"' + (s || '').replace(/"/g, '""') + '"';
+      return [a.date, esc(a.task), esc(a.metric), esc(a.impact)].join(',');
+    });
+    return '\uFEFF' + header + '\n' + rows.join('\n');
+  }
+
+  btnExportTxt.addEventListener('click', () => {
+    const list = load();
+    if (list.length === 0) return showToast('내보낼 기록이 없습니다');
+    downloadFile('work-journal.txt', buildTxt(list), 'text/plain;charset=utf-8');
+    showToast('TXT 파일로 내보냈습니다');
+  });
+
+  btnExportCsv.addEventListener('click', () => {
+    const list = load();
+    if (list.length === 0) return showToast('내보낼 기록이 없습니다');
+    downloadFile('work-journal.csv', buildCsv(list), 'text/csv;charset=utf-8');
+    showToast('CSV 파일로 내보냈습니다');
+  });
 
   // ── Tab Switching ──
   $$('.tab-item').forEach(btn => {
