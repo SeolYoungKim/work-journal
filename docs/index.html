@@ -53,18 +53,52 @@ body {
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
-/* ── Header ── */
-.date-header {
-  font-size: 22px;
-  font-weight: 700;
+/* ── Date Row ── */
+.date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 4px;
+}
+
+.date-arrow {
+  font-size: 24px;
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.date-arrow:hover { background: var(--input-bg); }
+.date-arrow:disabled { opacity: 0.25; cursor: default; }
+.date-arrow:disabled:hover { background: none; }
+
+.date-center { text-align: center; cursor: pointer; }
+
+.date-header {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.date-hint {
+  font-size: 11px;
+  color: var(--primary);
+  margin-top: 2px;
 }
 
 .greeting {
   font-size: 14px;
   color: var(--text-muted);
   margin-bottom: 24px;
+  text-align: center;
 }
+
+.greeting strong { color: var(--primary); }
 
 /* ── Card ── */
 .card {
@@ -76,6 +110,7 @@ body {
 }
 
 .label {
+  display: block;
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -83,6 +118,8 @@ body {
 }
 
 .label:first-child { margin-top: 0; }
+.label .required { color: var(--danger); }
+.label .optional { color: #aaa; font-size: 12px; font-weight: 400; }
 
 .input, .textarea {
   width: 100%;
@@ -112,7 +149,10 @@ body {
 
 /* ── Button ── */
 .btn-save {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   padding: 16px;
   background: var(--primary);
@@ -137,11 +177,32 @@ body {
   cursor: default;
 }
 
+.btn-save .shortcut {
+  opacity: 0.5;
+  font-size: 12px;
+  font-weight: 400;
+}
+
 /* ── Records List ── */
 .section-header {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 10px;
+}
+
+.section-header.today {
+  color: var(--primary);
+}
+
+.section-header.today::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 .section { margin-bottom: 20px; }
@@ -155,13 +216,18 @@ body {
   position: relative;
 }
 
+.record-card.editing {
+  border: 2px solid var(--primary);
+  box-shadow: none;
+}
+
 .record-task {
   font-size: 15px;
   font-weight: 500;
   color: #333;
   line-height: 1.5;
   margin-bottom: 8px;
-  padding-right: 28px;
+  padding-right: 56px;
 }
 
 .record-meta {
@@ -175,21 +241,53 @@ body {
 .record-meta.metric { color: var(--primary); font-weight: 600; }
 .record-meta.impact { color: var(--text-secondary); }
 
-.btn-delete {
+.record-actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+}
+
+.btn-action {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   color: #ccc;
   padding: 4px;
   line-height: 1;
   transition: color 0.2s;
 }
 
-.btn-delete:hover { color: var(--danger); }
+.btn-action.edit:hover { color: var(--primary); }
+.btn-action.delete:hover { color: var(--danger); }
+
+/* ── Edit Form (inline) ── */
+.edit-form { margin-top: 0; }
+.edit-form .input, .edit-form .textarea {
+  margin-bottom: 8px;
+  padding: 12px;
+  font-size: 14px;
+}
+.edit-form .textarea { min-height: 60px; }
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.edit-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.edit-actions .cancel { background: var(--input-bg); color: var(--text); }
+.edit-actions .save { background: var(--primary); color: #fff; }
 
 /* ── Empty State ── */
 .empty-state {
@@ -203,7 +301,19 @@ body {
 
 .empty-icon { font-size: 48px; margin-bottom: 16px; }
 .empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-.empty-text { font-size: 14px; color: var(--text-muted); }
+.empty-text { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+.empty-cta {
+  display: inline-block;
+  padding: 14px 32px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
 
 /* ── Bottom Tab Bar ── */
 .tab-bar {
@@ -374,24 +484,34 @@ body {
 </div>
 
 <!-- Tab Content -->
-<div class="tab-content">
+<div class="tab-content" id="tabContent">
   <!-- Home Panel -->
   <div class="tab-panel active" id="panelHome" role="tabpanel">
-    <div class="date-header" id="dateHeader"></div>
-    <div class="greeting">오늘의 성과를 기록하세요</div>
+    <div class="date-row">
+      <button class="date-arrow" id="prevDate">&#8249;</button>
+      <div class="date-center" id="dateCenterBtn">
+        <div class="date-header" id="dateHeader"></div>
+        <div class="date-hint" id="dateHint" style="display:none">탭하여 오늘로 이동</div>
+      </div>
+      <button class="date-arrow" id="nextDate" disabled>&#8250;</button>
+    </div>
+    <div class="greeting" id="greeting">오늘의 성과를 기록하세요</div>
 
     <div class="card">
-      <label class="label" for="inputTask">오늘 한 일</label>
+      <label class="label" for="inputTask">오늘 한 일 <span class="required">*</span></label>
       <textarea class="textarea" id="inputTask" placeholder="어떤 일을 했나요?" maxlength="2000"></textarea>
 
-      <label class="label" for="inputMetric">수치</label>
+      <label class="label" for="inputMetric">수치 <span class="optional">(선택)</span></label>
       <input class="input" id="inputMetric" placeholder="예: 에러 로그 40% 감소" maxlength="500">
 
-      <label class="label" for="inputImpact">임팩트</label>
+      <label class="label" for="inputImpact">임팩트 <span class="optional">(선택)</span></label>
       <input class="input" id="inputImpact" placeholder="왜 중요한지 한 줄로" maxlength="500">
     </div>
 
-    <button class="btn-save" id="btnSave">저장하기</button>
+    <button class="btn-save" id="btnSave">
+      <span>저장하기</span>
+      <span class="shortcut">Ctrl+Enter</span>
+    </button>
   </div>
 
   <!-- Records Panel -->
@@ -431,7 +551,11 @@ body {
   }
 
   function save(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    } catch {
+      showToast('저장 공간이 부족합니다');
+    }
   }
 
   // ── Date Helpers ──
@@ -454,11 +578,21 @@ body {
     return `${m}월 ${d}일 (${DAYS[dt.getDay()]})`;
   }
 
+  function isSameDay(a, b) {
+    return formatDate(a) === formatDate(b);
+  }
+
   // ── DOM ──
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
+  const tabContent = $('#tabContent');
   const dateHeader = $('#dateHeader');
+  const dateHint = $('#dateHint');
+  const dateCenterBtn = $('#dateCenterBtn');
+  const prevDateBtn = $('#prevDate');
+  const nextDateBtn = $('#nextDate');
+  const greeting = $('#greeting');
   const inputTask = $('#inputTask');
   const inputMetric = $('#inputMetric');
   const inputImpact = $('#inputImpact');
@@ -469,8 +603,47 @@ body {
   const dialogCancel = $('#dialogCancel');
   const dialogConfirm = $('#dialogConfirm');
 
-  // ── Init Date ──
-  dateHeader.textContent = displayDate(new Date());
+  // ── Selected Date State ──
+  let selectedDate = new Date();
+
+  function updateDateUI() {
+    const isToday = isSameDay(selectedDate, new Date());
+    dateHeader.textContent = displayDate(selectedDate);
+    dateHint.style.display = isToday ? 'none' : 'block';
+    nextDateBtn.disabled = isToday;
+
+    // Update greeting with count
+    const list = load();
+    const dateStr = formatDate(selectedDate);
+    const count = list.filter(a => a.date === dateStr).length;
+    if (count === 0) {
+      greeting.innerHTML = isToday ? '오늘의 성과를 기록하세요' : '이 날의 성과를 기록하세요';
+    } else {
+      greeting.innerHTML = `<strong>${count}건</strong> 기록됨`;
+    }
+  }
+
+  function shiftDate(days) {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + days);
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    if (d <= now) {
+      selectedDate = d;
+      updateDateUI();
+    }
+  }
+
+  prevDateBtn.addEventListener('click', () => shiftDate(-1));
+  nextDateBtn.addEventListener('click', () => shiftDate(1));
+  dateCenterBtn.addEventListener('click', () => {
+    if (!isSameDay(selectedDate, new Date())) {
+      selectedDate = new Date();
+      updateDateUI();
+    }
+  });
+
+  updateDateUI();
 
   // ── Toast ──
   let toastTimer;
@@ -514,7 +687,8 @@ body {
 
   // ── Save ──
   let isSaving = false;
-  btnSave.addEventListener('click', () => {
+
+  function doSave() {
     if (isSaving) return;
 
     const task = inputTask.value.trim();
@@ -526,13 +700,12 @@ body {
 
     isSaving = true;
     btnSave.disabled = true;
-    btnSave.textContent = '저장 중...';
 
     try {
       const now = new Date();
       const entry = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        date: formatDate(now),
+        date: formatDate(selectedDate),
         task: task,
         metric: inputMetric.value.trim(),
         impact: inputImpact.value.trim(),
@@ -547,17 +720,33 @@ body {
       inputMetric.value = '';
       inputImpact.value = '';
 
+      tabContent.scrollTo({ top: 0, behavior: 'smooth' });
+      updateDateUI();
       showToast('저장되었습니다!');
     } catch {
       showToast('저장 중 오류가 발생했습니다');
     } finally {
       isSaving = false;
       btnSave.disabled = false;
-      btnSave.textContent = '저장하기';
+    }
+  }
+
+  btnSave.addEventListener('click', doSave);
+
+  // Ctrl+Enter / Cmd+Enter shortcut
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const homeActive = $('#panelHome').classList.contains('active');
+      if (homeActive) {
+        e.preventDefault();
+        doSave();
+      }
     }
   });
 
   // ── Render Records ──
+  let editingId = null;
+
   function renderRecords() {
     const list = load();
     if (list.length === 0) {
@@ -566,14 +755,15 @@ body {
         '<div class="empty-state">' +
           '<div class="empty-icon">📝</div>' +
           '<div class="empty-title">기록이 없습니다</div>' +
-          '<div class="empty-text">오늘의 성과를 기록해보세요!</div>' +
+          '<div class="empty-text">첫 번째 성과를 기록해보세요!</div>' +
+          '<button class="empty-cta" id="emptyCta">기록하러 가기</button>' +
         '</div>';
       return;
     }
 
     exportBar.style.display = 'flex';
 
-    // Group by date
+    const todayStr = formatDate(new Date());
     const map = new Map();
     for (const a of list) {
       if (!map.has(a.date)) map.set(a.date, []);
@@ -584,22 +774,40 @@ body {
 
     let html = '';
     for (const date of dates) {
+      const isToday = date === todayStr;
       html += '<div class="section">';
-      html += `<div class="section-header">${sectionDate(date)}</div>`;
+      html += `<div class="section-header${isToday ? ' today' : ''}">${isToday ? '오늘' : sectionDate(date)}</div>`;
       for (const item of map.get(date)) {
-        const taskEsc = escapeHtml(item.task);
-        const metricEsc = escapeHtml(item.metric);
-        const impactEsc = escapeHtml(item.impact);
-        html += `<div class="record-card">`;
-        html += `<button class="btn-delete" data-id="${escapeHtml(item.id)}" title="삭제">✕</button>`;
-        html += `<div class="record-task">${taskEsc}</div>`;
-        if (item.metric) {
-          html += `<div class="record-meta metric"><span>📊</span> ${metricEsc}</div>`;
+        const idEsc = escapeHtml(item.id);
+
+        if (editingId === item.id) {
+          html += `<div class="record-card editing">`;
+          html += `<div class="edit-form">`;
+          html += `<textarea class="textarea" data-edit-task="${idEsc}" maxlength="2000">${escapeHtml(item.task)}</textarea>`;
+          html += `<input class="input" data-edit-metric="${idEsc}" value="${escapeHtml(item.metric)}" placeholder="수치 (선택)" maxlength="500">`;
+          html += `<input class="input" data-edit-impact="${idEsc}" value="${escapeHtml(item.impact)}" placeholder="임팩트 (선택)" maxlength="500">`;
+          html += `<div class="edit-actions">`;
+          html += `<button class="cancel" data-cancel-edit>취소</button>`;
+          html += `<button class="save" data-save-edit="${idEsc}">저장</button>`;
+          html += `</div></div></div>`;
+        } else {
+          const taskEsc = escapeHtml(item.task);
+          const metricEsc = escapeHtml(item.metric);
+          const impactEsc = escapeHtml(item.impact);
+          html += `<div class="record-card">`;
+          html += `<div class="record-actions">`;
+          html += `<button class="btn-action edit" data-edit-id="${idEsc}" title="수정">✎</button>`;
+          html += `<button class="btn-action delete" data-delete-id="${idEsc}" title="삭제">✕</button>`;
+          html += `</div>`;
+          html += `<div class="record-task">${taskEsc}</div>`;
+          if (item.metric) {
+            html += `<div class="record-meta metric"><span>📊</span> ${metricEsc}</div>`;
+          }
+          if (item.impact) {
+            html += `<div class="record-meta impact"><span>💡</span> ${impactEsc}</div>`;
+          }
+          html += `</div>`;
         }
-        if (item.impact) {
-          html += `<div class="record-meta impact"><span>💡</span> ${impactEsc}</div>`;
-        }
-        html += `</div>`;
       }
       html += '</div>';
     }
@@ -607,10 +815,57 @@ body {
     recordsList.innerHTML = html;
   }
 
-  // Event delegation: 삭제 버튼 클릭 처리 (한 번만 등록)
+  // Event delegation for records
   recordsList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-delete');
-    if (btn) showConfirm(btn.dataset.id);
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+      showConfirm(deleteBtn.dataset.deleteId);
+      return;
+    }
+
+    const editBtn = e.target.closest('[data-edit-id]');
+    if (editBtn) {
+      editingId = editBtn.dataset.editId;
+      renderRecords();
+      return;
+    }
+
+    const cancelBtn = e.target.closest('[data-cancel-edit]');
+    if (cancelBtn) {
+      editingId = null;
+      renderRecords();
+      return;
+    }
+
+    const saveBtn = e.target.closest('[data-save-edit]');
+    if (saveBtn) {
+      const id = saveBtn.dataset.saveEdit;
+      const taskEl = recordsList.querySelector(`[data-edit-task="${CSS.escape(id)}"]`);
+      const metricEl = recordsList.querySelector(`[data-edit-metric="${CSS.escape(id)}"]`);
+      const impactEl = recordsList.querySelector(`[data-edit-impact="${CSS.escape(id)}"]`);
+      if (!taskEl || !taskEl.value.trim()) {
+        showToast("'오늘 한 일'을 입력해주세요");
+        return;
+      }
+      const list = load();
+      const idx = list.findIndex(a => a.id === id);
+      if (idx !== -1) {
+        list[idx].task = taskEl.value.trim();
+        list[idx].metric = metricEl ? metricEl.value.trim() : '';
+        list[idx].impact = impactEl ? impactEl.value.trim() : '';
+        save(list);
+        showToast('수정되었습니다');
+      }
+      editingId = null;
+      renderRecords();
+      return;
+    }
+
+    const emptyCta = e.target.closest('#emptyCta');
+    if (emptyCta) {
+      document.querySelector('[data-tab="panelHome"]').click();
+      return;
+    }
   });
 
   function escapeHtml(str) {
@@ -694,7 +949,11 @@ body {
       $('#' + btn.dataset.tab).classList.add('active');
 
       if (btn.dataset.tab === 'panelRecords') {
+        editingId = null;
         renderRecords();
+      }
+      if (btn.dataset.tab === 'panelHome') {
+        updateDateUI();
       }
     });
   });

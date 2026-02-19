@@ -35,6 +35,16 @@ export function saveAchievement(achievement: Achievement): Promise<void> {
   });
 }
 
+export function updateAchievement(updated: Achievement): Promise<void> {
+  return withLock(async () => {
+    const list = await getAchievements();
+    const idx = list.findIndex((a) => a.id === updated.id);
+    if (idx === -1) return;
+    list[idx] = updated;
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  });
+}
+
 export function deleteAchievement(id: string): Promise<void> {
   return withLock(async () => {
     const list = await getAchievements();
